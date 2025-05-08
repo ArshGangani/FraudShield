@@ -1,5 +1,9 @@
-exports.handleUpload = async (req, res) => {
+const TransactionData = require("../db/TransactionData");
+const { exec } = require("child_process");
+const fs = require("fs");
+const path = require("path");
 
+exports.handleUpload = async (req, res) => {
     if (!req.file) {
         return res.status(400).send('File not received. Make sure you send it as form-data with key "csv"');
     }
@@ -35,15 +39,8 @@ exports.handleUpload = async (req, res) => {
                 return res.status(500).send('Output file missing');
             }
 
-            res.download(outputFilePath, (err) => {
-                if (err) {
-                    return res.status(500).send('Download failed');
-                }
-
-                console.log('Download successful');
-                // fs.unlinkSync(inputFile);
-                // fs.unlinkSync(outputFilePath);
-            });
+            // Instead of downloading the file, return the transaction ID
+            res.status(200).json({ transactionId: transaction._id });
         });
 
     } catch (err) {

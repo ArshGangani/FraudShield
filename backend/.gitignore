@@ -3,3 +3,5 @@ path/
 processed/
 uploads/
 .env
+.DS_Store
+controllers/.DS_Store

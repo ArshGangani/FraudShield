@@ -2,7 +2,9 @@ const express = require('express');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
+const cors = require("cors")
 require('dotenv').config();
+
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -20,8 +22,12 @@ mongoose.connect(process.env.MONGO_URI)
     console.error('❌ MongoDB connection failed:', err.message);
   });
 
-// Routes
+  app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true
+  }))
 
+// Routes
 const authController = require('./controllers/authController');
 app.use(express.json());
 

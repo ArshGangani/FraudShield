@@ -4,6 +4,8 @@ import { Upload, FileText } from "lucide-react"
 const FileUpload = ({ onFileAnalyze }) => {
   const [fileSelected, setFileSelected] = useState(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [transactionId, setTransactionId] = useState(null)
+  const [isUploading, setIsUploading] = useState(false)
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -29,9 +31,55 @@ const FileUpload = ({ onFileAnalyze }) => {
     }
   }
 
-  const analyzeFile = () => {
-    if (fileSelected) {
-      onFileAnalyze(fileSelected)
+  const analyzeFile = async () => {
+    if (!fileSelected) return
+
+    setIsUploading(true)
+    const formData = new FormData()
+    formData.append("csv", fileSelected)
+    formData.append("userId", localStorage.getItem("userId"))
+
+    try {
+      const res = await fetch("http://localhost:3000/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!res.ok) throw new Error("Upload failed")
+
+      const result = await res.json()
+      const transactionId = result.transactionId || result._id // adjust depending on your backend
+      setTransactionId(transactionId)
+    } catch (err) {
+      console.error("Error uploading file:", err)
+      alert("Failed to upload and analyze the file.")
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const fetchAnalyzedData = async () => {
+    if (!transactionId) return
+
+    try {
+      const res = await fetch(`http://localhost:3000/api/transactions/${transactionId}`)
+      if (!res.ok) throw new Error("Failed to fetch transaction data")
+      const result = await res.json()
+
+      // Transform and pass to dashboard
+      const transformed = result.data.map((item, idx) => ({
+        id: idx + 1,
+        date: item.Date,
+        description: item.Description,
+        credit: parseFloat(item.Credit),
+        debit: parseFloat(item.Debit),
+        availableBalance: parseFloat(item["Available Balance"]),
+        anomalyStatus: item.Anomaly === "-1" ? "Suspicious" : "Normal",
+      }))
+      onFileAnalyze(fileSelected, transformed)
+    } catch (err) {
+      console.error("Error fetching analyzed data:", err)
+      alert("Failed to fetch transaction data.")
     }
   }
 
@@ -70,12 +118,22 @@ const FileUpload = ({ onFileAnalyze }) => {
               <FileText className="h-5 w-5 text-gray-600" />
               <span className="text-sm font-medium">{fileSelected.name}</span>
             </div>
-            <button
-              onClick={analyzeFile}
-              className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              Analyze
-            </button>
+            {transactionId ? (
+              <button
+                onClick={fetchAnalyzedData}
+                className="inline-flex h-10 items-center justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700"
+              >
+                View
+              </button>
+            ) : (
+              <button
+                disabled={isUploading}
+                onClick={analyzeFile}
+                className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              >
+                {isUploading ? "Analyzing..." : "Analyze"}
+              </button>
+            )}
           </div>
         )}
       </div>
